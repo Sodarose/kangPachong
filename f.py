@@ -1,40 +1,26 @@
 import requests
 import os
-from multiprocessing import Process
+from multiprocessing import Pool
 from pyquery  import PyQuery as pq
 import time
+import random
 
-headers = {
-    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0',
-    'Host':	'www.gugu5.com'
-}
-data={
-
-}
-
-address='http://www.gugu5.com/all/'
-paddress='http://www.gugu5.com'
-ticai={
-
-}
-reData={
-
-}
 # 搜索分类
-def f():
+def f(address,headers):
     r = requests.get(url=address,headers=headers)
     r.encoding="UTF-8"
     if r.status_code==200:
+        ticai={}
         html = r.text
         doc = pq(html)
         doc = doc('.classid111').siblings()('a').items()
-        global ticai
         for i in doc:
             ticai[str(i.text())]=str(i.attr('href'))
+        return ticai
 
 
 # 单页扫描函数
-def z(address):
+def z(address,headers):
     r = requests.get(url=address,headers=headers)
     r.encoding="UTF-8"
     if(r.status_code==200):
@@ -68,7 +54,7 @@ def z(address):
         return pageDate
 
 # 根据类型搜索
-def x(title,leixing):
+def x(title,leixing,paddress,headers):
     r = requests.get(url=paddress+leixing)
     r.encoding='UTF-8'
     doc = pq(r.text)
@@ -78,7 +64,7 @@ def x(title,leixing):
     leData=[]
     for i in range(1,int(maxPage)+1):
         address = paddress+leixing+str(i)+'.html'
-        leData.append(z(address))
+        leData.append(z(address,headers))
     # 写入数据
     w(title,leData)
 
@@ -87,50 +73,30 @@ def x(title,leixing):
 
 # 写入数据
 def w(title,data):
-    f = open('标题'+title+'清单','w')
+    f = open('./漫画清单/'+title+'清单.txt','w',encoding='UTF-8')
     for i in data:
         for j in i:
-            f.write(str(j))
+            f.write(str(j)+'\n')
     f.close()
 
 # 开启进程池写入数据
 def p():
-    pass
-
-def run():
-    print(os.getpid())
-    print('子程序')
-
-def f(name):
-    print('hello', name)
-    time.sleep(1)
-class Ps(Process):
-    def __init__(self, name):
-        super().__init__()
-        self.name = name
-
-    def run(self):
-        print(os.getpid())
-        print('%s 正在和女主播聊天' % self.name)
-
-if '__name__' == '__main__':
-    p_lst = []
-    for i in range(5):
-        p = Process(target=f, args=('bob',))
-        p.start()
-        p_lst.append(p)
-        p.join()
-    # [p.join() for p in p_lst]
-    print('父进程在执行')
-    p1 = Ps('wupeiqi')
-    p2 = Ps('yuanhao')
-    p3 = Ps('nezha')
-    p1.start()
-    p2.start()
-    p3.start()
+    print("进程:"+str(os.getpid())+"完成")
 
 
-
-
-
-
+if __name__ == '__main__':
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0',
+        'Host': 'www.gugu5.com'
+    }
+    initUrl = 'http://www.gugu5.com/all/'
+    paddress = 'http://www.gugu5.com'
+    fenlei=f(initUrl,headers)
+    pool = Pool(os.cpu_count()+1)
+    if not os.path.exists('./漫画清单/'):
+        os.mkdir('./漫画清单/')
+    for key in fenlei:
+        pool.apply_async(func=x,args=(key,fenlei[key],paddress,headers))
+    pool.close()
+    pool.join()
+    print("程序退出")
